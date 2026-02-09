@@ -1,80 +1,97 @@
 import fs from "fs";
 import path from "path";
 import Papa from "papaparse";
+import Fuse from "fuse.js";
 
-function splitPercentages(usage) {
-    let split = {
-        CPU: 0.25,
-        GPU: 0.35,
-        RAM: 0.1,
-        storage: 0.1,
-        motherboard: 0.1,
-        PSU: 0.1,
-    };
-
-    switch (usage) {
-        case "gaming":
-            split.GPU = 0.45;
-            split.CPU = 0.2;
-            break;
-        case "work":
-        case "general":
-            split.CPU = 0.35;
-            split.GPU = 0.2;
-            break;
-        case "video_editing":
-        case "3d":
-        case "streaming":
-            split.CPU = 0.3;
-            split.GPU = 0.4;
-            break;
-    }
-
-    const total = Object.values(split).reduce((a, b) => a + b, 0);
-    Object.keys(split).forEach((k) => (split[k] /= total));
-
-    return split;
+function normalize(str) {
+  return str.toLowerCase().trim().replace(/[^a-z0-9 ]/g, "");
 }
 
-export function filterDataInJSON(data) {
-    const maxBudget = data.maxBudget;
-    const split = splitPercentages(data.usage)
-    const prices = {
-        CPU: maxBudget * split.CPU,
-        GPU: maxBudget * split.GPU,
-        RAM: maxBudget * split.RAM,
-        storage: maxBudget * split.storage,
-        motherboard: maxBudget * split.motherboard,
-        PSU: maxBudget * split.PSU,
-    };
+function extractTokens(str) {
+  return normalize(str)
+    .split(" ")
+    .filter(Boolean)
+    .filter(
+      w =>
+        ![
+          "xt",
+          "ti",
+          "super",
+          "w",
+          "plus",
+          "gold",
+          "bronze",
+          "platinum",
+          "pcie5",
+          "mhz"
+        ].includes(w)
+    );
+}
 
-    const readAndFilterCSV = (filename, budget) => {
-        const filePath = path.join(process.cwd(), "src/data", filename);
-        const file = fs.readFileSync(filePath, "utf8");
+function tokenScore(inputTokens, itemTokens) {
+  return inputTokens.filter(t => itemTokens.includes(t)).length;
+}
 
-        const results = Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-        });
+function readCSV(filename) {
+  const filePath = path.join(process.cwd(), "src/data", filename);
+  const file = fs.readFileSync(filePath, "utf8");
 
-        return results.data
-            .filter((item) => Number(item.price) <= budget)
-            .map((item) => `${item.name} ${Number(item.price)}$`);
-    };
+  const results = Papa.parse(file, { header: true, skipEmptyLines: true });
+  return results.data;
+}
 
-    const CPUs = readAndFilterCSV("cpu.csv", prices.CPU);
-    const GPUs = readAndFilterCSV("video-card.csv", prices.GPU);
-    const RAMs = readAndFilterCSV("memory.csv", prices.RAM);
-    const storages = readAndFilterCSV("internal-hard-drive.csv", prices.storage);
-    const motherboards = readAndFilterCSV("motherboard.csv", prices.motherboard);
-    const PSUs = readAndFilterCSV("power-supply.csv", prices.PSU);
+function findBestMatch(input, dataset, key = "name") {
+  if (!input || !dataset.length) return null;
 
-    return {
-        CPUsList: CPUs,
-        GPUsList: GPUs,
-        RAMsList: RAMs,
-        storagesList: storages,
-        motherboardsList: motherboards,
-        PSUsList: PSUs,
-    };
+  const inputTokens = extractTokens(input);
+
+  let bestItem = null;
+  let bestScore = -1;
+
+  for (const item of dataset) {
+    const itemTokens = extractTokens(item[key]);
+    const score = tokenScore(inputTokens, itemTokens);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestItem = item;
+    }
+  }
+
+  if (bestScore === 0) {
+    const fuse = new Fuse(dataset, {
+      keys: [key],
+      threshold: 0.4,
+      ignoreLocation: true,
+      tokenize: true
+    });
+
+    const fuseResult = fuse.search(input);
+    bestItem = fuseResult[0]?.item || null;
+  }
+
+  return bestItem
+    ? {
+        name: bestItem[key],
+        price: bestItem.price ? Number(bestItem.price) : "Unknown",
+      }
+    : null;
+}
+
+export function filterDataInJSON(build) {
+  const cpuData = readCSV("cpu.csv");
+  const gpuData = readCSV("video-card.csv");
+  const ramData = readCSV("memory.csv");
+  const storageData = readCSV("internal-hard-drive.csv");
+  const motherboardData = readCSV("motherboard.csv");
+  const psuData = readCSV("power-supply.csv");
+
+  return {
+    CPU: findBestMatch(build.CPU, cpuData),
+    GPU: findBestMatch(build.GPU, gpuData, "chipset"),
+    RAM: findBestMatch(build.RAM, ramData),
+    Storage: findBestMatch(build.Storage, storageData),
+    Motherboard: findBestMatch(build.Motherboard, motherboardData),
+    PSU: findBestMatch(build.PSU, psuData),
+  };
 }
