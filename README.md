@@ -20,7 +20,7 @@ Dataset source: [PC Part Dataset](https://github.com/docyx/pc-part-dataset/tree/
 
 ## 🛠️ Getting Started
 
-Follow these steps to run the app locally.
+Before following these steps, make sure you have Node.js and a package manager installed between npm, yarn, pnpm or bun.
 
 ### 1️⃣ Navigate to the projer
 
@@ -40,7 +40,7 @@ bun install
 
 ### 3️⃣ Set up environment variables
 
-You have to create a .env inside the app folder and create OPENROUTER_KEY=your_api_key_here.
+You have to create a .env file inside the ./app folder and create OPENROUTER_KEY=your_api_key_here. So, you have to create an account at [OpenRouter](https://openrouter.ai/) and create an API key.
 
 ### 4️⃣ Start the development server
 
