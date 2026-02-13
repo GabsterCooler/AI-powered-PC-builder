@@ -1,9 +1,9 @@
-function cleanAIResponse(str) {
-    str = str.replace(/```json|```/gi, "").trim();
+function cleanAIResponse(message) {
+    message = message.replace(/```json|```/gi, "").trim();
 
-    str = str.replace(/^\s+|\s+$/g, "");
+    message = message.replace(/^\s+|\s+$/g, "");
 
-    return str;
+    return message;
 }
 
 export async function promptAI(prompt) {
