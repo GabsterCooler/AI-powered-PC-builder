@@ -4,6 +4,29 @@ import { filterDataInJSON } from "@/app/lib/excel";
 export async function POST(req) {
     const data = await req.json();
 
+    const allowedUsage = ["gaming", "work", "video_editing", "3d", "streaming", "general"];
+    const allowedResolution = ["1080p", "1440p", "4k"];
+    const allowedPerformance = ["best_value", "high_end", "future_proof"];
+
+    function isValidNumber(value) {
+        return typeof value === "number" && Number.isFinite(value) && value >= 0;
+    }
+
+    const isFormGood =
+        data &&
+        typeof data === "object" &&
+        allowedUsage.includes(data.usage) &&
+        isValidNumber(data.budget) &&
+        allowedResolution.includes(data.resolution) &&
+        allowedPerformance.includes(data.performance);
+
+    if (!isFormGood) {
+        return new Response(
+            JSON.stringify({ error: "Invalid form data" }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+    }
+
     const prompt = `
         You are a PC hardware expert.
 

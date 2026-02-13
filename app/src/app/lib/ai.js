@@ -29,6 +29,6 @@ export async function promptAI(prompt) {
         return JSON.parse(build);
     } catch (err) {
         console.error("Failed to parse AI response as JSON:", err);
-        return { error: "Failed to parse AI response" };
+        return { error: build };
     }
 }
