@@ -14,7 +14,7 @@ export async function promptAI(prompt) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o",
+        model: "openrouter/auto",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 300,
       }),
