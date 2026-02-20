@@ -2,64 +2,95 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaMicrochip, FaMemory, FaHdd, FaDesktop, FaBolt, FaVideo } from "react-icons/fa";
+import { Listbox } from "@headlessui/react";
+import {
+  FaMicrochip,
+  FaMemory,
+  FaHdd,
+  FaDesktop,
+  FaBolt,
+  FaVideo,
+  FaChevronDown,
+} from "react-icons/fa";
 
 const icons = {
-  CPU: <FaMicrochip className="text-blue-600" />,
-  GPU: <FaVideo className="text-red-500" />,
-  RAM: <FaMemory className="text-green-600" />,
-  Storage: <FaHdd className="text-yellow-600" />,
-  Motherboard: <FaDesktop className="text-purple-600" />,
-  PSU: <FaBolt className="text-orange-600" />,
+  CPU: <FaMicrochip className="text-[#C6A75E]" />,
+  GPU: <FaVideo className="text-[#C6A75E]" />,
+  RAM: <FaMemory className="text-[#C6A75E]" />,
+  Storage: <FaHdd className="text-[#C6A75E]" />,
+  Motherboard: <FaDesktop className="text-[#C6A75E]" />,
+  PSU: <FaBolt className="text-[#C6A75E]" />,
 };
 
 const inputStyles =
-  "bg-white text-gray-900 border border-gray-300 p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none";
-
-const labelStyles =
-  "block mb-2 font-semibold text-gray-700";
-
-const primaryButton =
-  "bg-blue-600 text-white px-6 py-3 rounded text-lg font-semibold transition-transform hover:scale-105 hover:shadow-xl";
-
-const cardStyles =
-  "bg-white p-5 rounded-xl shadow-lg border-l-4 border-blue-500 flex items-center gap-4 will-change-transform";
+  "bg-[#121216] border border-white/10 text-white p-3 rounded-xl w-full focus:border-[#C6A75E] transition";
 
 function Field({ label, children }) {
   return (
-    <div>
-      <label className={labelStyles}>{label}</label>
+    <div className="mb-6">
+      <label className="block text-xs uppercase tracking-widest text-zinc-500 mb-3">
+        {label}
+      </label>
       {children}
     </div>
+  );
+}
+
+function CustomSelect({ label, value, onChange, options }) {
+  return (
+    <Field label={label}>
+      <Listbox value={value} onChange={onChange}>
+        <div className="relative">
+          <Listbox.Button className="w-full bg-[#121216] border border-white/10 rounded-xl p-3 text-left flex justify-between items-center focus:outline-none focus:border-[#C6A75E] transition-all">
+            <span>{value ? options.find((o) => o.value === value)?.label : "Select"}</span>
+            <FaChevronDown className="text-[#C6A75E]" />
+          </Listbox.Button>
+          <Listbox.Options className="absolute mt-2 w-full bg-[#18181C] border border-white/10 rounded-xl shadow-lg max-h-60 overflow-auto z-10">
+            {options.map((option) => (
+              <Listbox.Option
+                key={option.value}
+                value={option.value}
+                className={({ active, selected }) =>
+                  `cursor-pointer select-none p-3 ${
+                    active ? "bg-[#C6A75E]/20 text-[#C6A75E]" : "text-white"
+                  } ${selected ? "font-medium" : "font-normal"}`
+                }
+              >
+                {option.label}
+              </Listbox.Option>
+            ))}
+          </Listbox.Options>
+        </div>
+      </Listbox>
+    </Field>
   );
 }
 
 function ComponentCard({ component, value }) {
   return (
     <motion.div
-      className={cardStyles}
-      whileHover={{ scale: 1.05 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="relative bg-[#18181C] border border-white/5 p-8 rounded-3xl flex items-center gap-6 hover:border-[#C6A75E]/40 transition-all duration-500"
     >
       <div className="text-3xl">{icons[component]}</div>
-
       <div className="flex-1">
-        <h3 className="font-bold text-lg mb-1 text-blue-600">
+        <h3 className="uppercase tracking-widest text-xs text-[#C6A75E]">
           {component}
         </h3>
-        <p className="text-gray-700">{value?.name || "Not Found"}</p>
+        <p className="text-lg mt-2 font-light text-white line-clamp-3 leading-relaxed">
+          {value?.name || "Not Found"}
+        </p>
       </div>
-
       {value?.price !== undefined && (
-        <div className="bg-blue-500 text-white font-semibold px-3 py-1 rounded-full text-sm shadow-md">
-          {value.price === "Unknown"
-            ? "Price Unknown"
-            : `$${value.price}`}
+        <div className="text-[#C6A75E] text-lg font-medium">
+          {value.price === "Unknown" ? "Price Unknown" : `$${value.price}`}
         </div>
       )}
     </motion.div>
   );
 }
-
 
 export default function Home() {
   const [form, setForm] = useState({
@@ -68,51 +99,36 @@ export default function Home() {
     resolution: "",
     performance: "",
   });
-
   const [build, setBuild] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleChange = ({ target: { name, value } }) => {
     setForm((prev) => ({
       ...prev,
-      [name]:
-        name === "budget"
-          ? value === ""
-            ? ""
-            : Math.max(0, Number(value))
-          : value,
+      [name]: name === "budget" ? (value === "" ? "" : Math.max(0, Number(value))) : value,
     }));
   };
 
   const handleGenerate = async () => {
-    if (Object.values(form).some(v => !v)) {
-      setError("Please fill out all fields before generating a build.");
-      setBuild(null);
+    if (Object.values(form).some((v) => !v)) {
+      setError("Please complete all configuration fields.");
       return;
     }
-
     setError(null);
     setLoading(true);
-
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
       const data = await res.json();
-
-      if (data?.error) {
-        setError(data.error);
-        setBuild(null);
-      } else {
-        setBuild(data.build);
-      }
+      if (data?.error) setError(data.error);
+      else setBuild(data.build);
     } catch {
-      setError("An unexpected error occurred. Please try again.");
-      setBuild(null);
+      setError("Unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -120,157 +136,155 @@ export default function Home() {
 
   const totalPrice = build
     ? Object.values(build).reduce((sum, item) => {
-      const price = Number(item?.price);
-      return isNaN(price) ? sum : sum + price;
-    }, 0) : 0;
+        const price = Number(item?.price);
+        return isNaN(price) ? sum : sum + price;
+      }, 0)
+    : 0;
 
   const handleCopy = () => {
     if (!build) return;
-
     const formatted = Object.entries(build)
-      .map(([key, item]) =>
-        `${key}: ${item?.name || "Not Found"} (${item?.price === "Unknown" ? "Price Unknown" : `$${item.price}`})`
+      .map(
+        ([key, item]) =>
+          `${key}: ${item?.name || "Not Found"} (${
+            item?.price === "Unknown" ? "Price Unknown" : `$${item.price}`
+          })`
       )
       .join("\n");
-
     navigator.clipboard.writeText(formatted);
-    alert("Build copied to clipboard!");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-      <h1 className="text-4xl font-bold mb-6 text-center text-blue-700 drop-shadow-lg">
-        🚀 PC Builder AI
-      </h1>
+    <section
+      className="relative flex flex-col items-center min-h-screen"
+      style={{
+        backgroundImage: `
+          radial-gradient(circle at center, #000 30%, #3b3a3a 45%, #000 75%)
+        `,
+      }}
+    >
+     
+      <div className="relative z-10 max-w-7xl px-8 py-16 w-full">
+        <div className="mb-16">
+          <h1 className="text-5xl font-light tracking-tight text-white">
+            PC Builder <span className="text-[#C6A75E]">AI</span>
+          </h1>
+          <p className="text-zinc-400 mt-4 max-w-xl">
+            Intelligent hardware configurations tailored to your performance goals.
+          </p>
+        </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleGenerate();
-        }}
-      >
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <Field label="Usage">
-            <select
-              name="usage"
+        <div className="grid lg:grid-cols-3 gap-16 text-white">
+          <div className="lg:col-span-1 bg-[#121216] border border-white/5 p-10 rounded-3xl h-fit">
+            <CustomSelect
+              label="Usage"
               value={form.usage}
-              onChange={handleChange}
-              className={inputStyles}
-            >
-              <option value="">Select usage</option>
-              <option value="gaming">Gaming</option>
-              <option value="work">Work / Office</option>
-              <option value="video_editing">Video Editing</option>
-              <option value="3d">3D / Rendering</option>
-              <option value="streaming">Streaming</option>
-              <option value="general">General Use</option>
-            </select>
-          </Field>
-
-          <Field label="Budget ($)">
-            <input
-              name="budget"
-              type="number"
-              value={form.budget}
-              onChange={handleChange}
-              placeholder="Max"
-              className={inputStyles}
+              onChange={(val) => setForm((prev) => ({ ...prev, usage: val }))}
+              options={[
+                { value: "gaming", label: "Gaming" },
+                { value: "work", label: "Work / Office" },
+                { value: "video_editing", label: "Video Editing" },
+                { value: "3d", label: "3D / Rendering" },
+                { value: "streaming", label: "Streaming" },
+                { value: "general", label: "General Use" },
+              ]}
             />
-          </Field>
 
-          <Field label="Resolution">
-            <select
-              name="resolution"
-              value={form.resolution}
-              onChange={handleChange}
-              className={inputStyles}
-            >
-              <option value="">Select resolution</option>
-              <option value="1080p">1080p</option>
-              <option value="1440p">1440p</option>
-              <option value="4k">4K</option>
-            </select>
-          </Field>
-
-          <Field label="Performance">
-            <select
-              name="performance"
-              value={form.performance}
-              onChange={handleChange}
-              className={inputStyles}
-            >
-              <option value="">Select</option>
-              <option value="best_value">Best Value</option>
-              <option value="high_end">High End</option>
-              <option value="future_proof">Future Proof</option>
-            </select>
-          </Field>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-3 mb-6">
-          <button
-            type="submit"
-            disabled={loading}
-            className={`${primaryButton} ${loading ? "opacity-70 cursor-not-allowed" : ""
-              }`}
-          >
-            {loading ? "Generating..." : "Generate Build"}
-          </button>
-
-          {build && (
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="bg-green-500 text-white px-4 py-2 rounded text-lg font-semibold hover:scale-105 hover:shadow-lg transition-transform"
-            >
-              Copy Build
-            </button>
-          )}
-        </div>
-      </form>
-
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="bg-red-100 text-red-700 p-4 rounded mb-4 text-center font-medium shadow-md"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {build && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-right text-xl font-bold mb-4 text-gray-800"
-        >
-          Total: ${totalPrice.toFixed(2)}
-        </motion.div>
-      )}
-
-      <AnimatePresence>
-        {build && (
-          <motion.div
-            key="build"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="grid md:grid-cols-2 gap-6"
-          >
-            {Object.entries(build).map(([component, value]) => (
-              <ComponentCard
-                key={component}
-                component={component}
-                value={value}
+            <Field label="Budget ($)">
+              <input
+                name="budget"
+                type="number"
+                value={form.budget}
+                onChange={handleChange}
+                className={inputStyles}
               />
-            ))}
+            </Field>
+
+            <CustomSelect
+              label="Resolution"
+              value={form.resolution}
+              onChange={(val) => setForm((prev) => ({ ...prev, resolution: val }))}
+              options={[
+                { value: "1080p", label: "1080p" },
+                { value: "1440p", label: "1440p" },
+                { value: "4k", label: "4K" },
+              ]}
+            />
+
+            <CustomSelect
+              label="Performance"
+              value={form.performance}
+              onChange={(val) => setForm((prev) => ({ ...prev, performance: val }))}
+              options={[
+                { value: "best_value", label: "Best Value" },
+                { value: "high_end", label: "High End" },
+                { value: "future_proof", label: "Future Proof" },
+              ]}
+            />
+
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="w-full mt-6 bg-[#C6A75E] text-black font-medium py-3 rounded-full tracking-wide transition-all duration-300 hover:bg-[#d4b56f] hover:shadow-[0_0_40px_rgba(198,167,94,0.4)] active:scale-95"
+            >
+              {loading ? "Generating..." : "Generate Build"}
+            </button>
+
+            {error && <div className="mt-6 text-sm text-red-400">{error}</div>}
+          </div>
+
+          <div className="lg:col-span-2">
+            {build && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-[#121216] border border-[#C6A75E]/30 p-10 rounded-3xl mb-8"
+                >
+                  <p className="text-zinc-500 uppercase tracking-widest text-sm">
+                    Total Investment
+                  </p>
+                  <p className="text-5xl font-light mt-4">${totalPrice.toFixed(2)}</p>
+                  <button
+                    onClick={handleCopy}
+                    className="mt-6 text-sm text-[#C6A75E] hover:underline"
+                  >
+                    Copy Build Summary
+                  </button>
+                </motion.div>
+
+                {/* Scrollable Component Cards */}
+                <div
+                  className="max-h-[600px] overflow-y-auto space-y-6 pr-2"
+                  style={{
+                    scrollbarWidth: "thin",
+                    scrollbarColor: "#C6A75E #121216",
+                  }}
+                >
+                  {Object.entries(build).map(([component, value]) => (
+                    <ComponentCard key={component} component={component} value={value} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {copied && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="fixed bottom-10 right-10 bg-[#18181C] border border-[#C6A75E]/30 px-6 py-4 rounded-xl shadow-2xl"
+          >
+            Build copied to clipboard
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </section>
   );
 }
