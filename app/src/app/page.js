@@ -14,7 +14,7 @@ const icons = {
 };
 
 const inputStyles =
-  "border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400 transition";
+  "bg-white text-gray-900 border border-gray-300 p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none";
 
 const labelStyles =
   "block mb-2 font-semibold text-gray-700";
