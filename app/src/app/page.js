@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Listbox } from "@headlessui/react";
 import {
@@ -24,6 +24,52 @@ const icons = {
 
 const inputStyles =
   "bg-[#121216] border border-white/10 text-white p-3 rounded-xl w-full focus:border-[#C6A75E] transition";
+
+function Spinner() {
+  return (
+    <motion.div
+      className="w-5 h-5 border-2 border-t-transparent border-black rounded-full"
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+    />
+  );
+}
+
+function AnimatedNumber({ value, duration = 0.5, decimals = 0 }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const end = Number(value);
+    const totalFrames = duration * 60;
+    let frame = 0;
+
+    const interval = setInterval(() => {
+      frame++;
+      const progress = frame / totalFrames;
+      const randomOffset = Math.random() * end * 0.1;
+      const current =
+        Math.floor(end * progress + randomOffset * (1 - progress) * 100) / 100;
+
+      setDisplay(current);
+
+      if (frame >= totalFrames) {
+        setDisplay(end);
+        clearInterval(interval);
+      }
+    }, 1000 / 60);
+
+    return () => clearInterval(interval);
+  }, [value, duration]);
+
+  return (
+    <span>
+      {display.toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })}
+    </span>
+  );
+}
 
 function Field({ label, children }) {
   return (
@@ -51,8 +97,7 @@ function CustomSelect({ label, value, onChange, options }) {
                 key={option.value}
                 value={option.value}
                 className={({ active, selected }) =>
-                  `cursor-pointer select-none p-3 ${
-                    active ? "bg-[#C6A75E]/20 text-[#C6A75E]" : "text-white"
+                  `cursor-pointer select-none p-3 ${active ? "bg-[#C6A75E]/20 text-[#C6A75E]" : "text-white"
                   } ${selected ? "font-medium" : "font-normal"}`
                 }
               >
@@ -125,9 +170,11 @@ export default function Home() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
+      console.log("API response:", data);
       if (data?.error) setError(data.error);
-      else setBuild(data.build);
-    } catch {
+      else setBuild(data.build || data);
+    } catch (err) {
+      console.error(err);
       setError("Unexpected error occurred.");
     } finally {
       setLoading(false);
@@ -136,9 +183,9 @@ export default function Home() {
 
   const totalPrice = build
     ? Object.values(build).reduce((sum, item) => {
-        const price = Number(item?.price);
-        return isNaN(price) ? sum : sum + price;
-      }, 0)
+      const price = Number(item?.price);
+      return isNaN(price) ? sum : sum + price;
+    }, 0)
     : 0;
 
   const handleCopy = () => {
@@ -146,8 +193,7 @@ export default function Home() {
     const formatted = Object.entries(build)
       .map(
         ([key, item]) =>
-          `${key}: ${item?.name || "Not Found"} (${
-            item?.price === "Unknown" ? "Price Unknown" : `$${item.price}`
+          `${key}: ${item?.name || "Not Found"} (${item?.price === "Unknown" ? "Price Unknown" : `$${item.price}`
           })`
       )
       .join("\n");
@@ -160,12 +206,9 @@ export default function Home() {
     <section
       className="relative flex flex-col items-center min-h-screen"
       style={{
-        backgroundImage: `
-          radial-gradient(circle at center, #000 30%, #3b3a3a 45%, #000 75%)
-        `,
+        backgroundImage: `radial-gradient(circle at center, #000 30%, #3b3a3a 45%, #000 75%)`,
       }}
     >
-     
       <div className="relative z-10 max-w-7xl px-8 py-16 w-full">
         <div className="mb-16">
           <h1 className="text-5xl font-light tracking-tight text-white">
@@ -227,47 +270,72 @@ export default function Home() {
             <button
               onClick={handleGenerate}
               disabled={loading}
-              className="w-full mt-6 bg-[#C6A75E] text-black font-medium py-3 rounded-full tracking-wide transition-all duration-300 hover:bg-[#d4b56f] hover:shadow-[0_0_40px_rgba(198,167,94,0.4)] active:scale-95"
+              className={`w-full mt-6 bg-[#C6A75E] text-black font-medium py-3 rounded-full tracking-wide transition-all duration-300 
+                hover:bg-[#d4b56f] hover:shadow-[0_0_40px_rgba(198,167,94,0.4)] active:scale-95 
+                flex justify-center items-center gap-2 ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
             >
-              {loading ? "Generating..." : "Generate Build"}
+              {loading ? (
+                <>
+                  <Spinner /> Generating...
+                </>
+              ) : (
+                "Generate Build"
+              )}
             </button>
 
             {error && <div className="mt-6 text-sm text-red-400">{error}</div>}
           </div>
 
-          <div className="lg:col-span-2">
-            {build && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#121216] border border-[#C6A75E]/30 p-10 rounded-3xl mb-8"
-                >
-                  <p className="text-zinc-500 uppercase tracking-widest text-sm">
-                    Total Investment
-                  </p>
-                  <p className="text-5xl font-light mt-4">${totalPrice.toFixed(2)}</p>
-                  <button
-                    onClick={handleCopy}
-                    className="mt-6 text-sm text-[#C6A75E] hover:underline"
+          <div className="lg:col-span-2 flex flex-col items-center">
+            {loading ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#121216] border border-[#C6A75E]/30 p-10 rounded-3xl w-full text-center"
+              >
+                <p className="text-white text-xl font-medium">
+                  The AI is building your PC...
+                </p>
+              </motion.div>
+            ) : (
+              build && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-[#121216] border border-[#C6A75E]/30 p-10 rounded-3xl mb-8 w-full"
                   >
-                    Copy Build Summary
-                  </button>
-                </motion.div>
+                    <p className="text-zinc-500 uppercase tracking-widest text-sm">
+                      Total Price
+                    </p>
+                    <p className="text-5xl font-light mt-4 text-white drop-shadow-[0_0_4px_#C6A75E]">
+                      $<AnimatedNumber value={totalPrice} decimals={2} />
+                    </p>
+                    <button
+                      onClick={handleCopy}
+                      className="mt-6 text-sm text-[#C6A75E] hover:underline"
+                    >
+                      Copy Build Summary
+                    </button>
+                  </motion.div>
 
-                {/* Scrollable Component Cards */}
-                <div
-                  className="max-h-[600px] overflow-y-auto space-y-6 pr-2"
-                  style={{
-                    scrollbarWidth: "thin",
-                    scrollbarColor: "#C6A75E #121216",
-                  }}
-                >
-                  {Object.entries(build).map(([component, value]) => (
-                    <ComponentCard key={component} component={component} value={value} />
-                  ))}
-                </div>
-              </>
+                  <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-[0_0_4px_#C6A75E]">
+                    Build
+                  </h2>
+
+                  <div
+                    className="max-h-[600px] overflow-y-auto space-y-6 pr-2 w-full"
+                    style={{
+                      scrollbarWidth: "thin",
+                      scrollbarColor: "#C6A75E #121216",
+                    }}
+                  >
+                    {Object.entries(build).map(([component, value]) => (
+                      <ComponentCard key={component} component={component} value={value} />
+                    ))}
+                  </div>
+                </>
+              )
             )}
           </div>
         </div>
@@ -278,10 +346,11 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="fixed bottom-10 right-10 bg-[#18181C] border border-[#C6A75E]/30 px-6 py-4 rounded-xl shadow-2xl"
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-10 right-10 bg-[#18181C] border border-[#C6A75E]/30 px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center text-white"
           >
-            Build copied to clipboard
+            <span className="text-sm font-medium">Build copied to clipboard</span>
           </motion.div>
         )}
       </AnimatePresence>

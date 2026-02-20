@@ -74,7 +74,18 @@ If the budget is too low to build a functional PC, output EXACTLY:
 Not enough budget for the recommendation.
         `;
 
-    const build = await promptAI(prompt);
+    //const build = await promptAI(prompt);
+
+    let build = '{\n' +
+        '  "CPU": "AMD Ryzen 5 5600X",\n' +
+        '  "GPU": "NVIDIA GeForce RTX 4070",\n' +
+        '  "RAM": "Corsair Vengeance LPX 16GB DDR4 3200MHz",\n' +
+        '  "Storage": "Samsung 970 Evo Plus 1TB NVMe SSD",\n' +
+        '  "Motherboard": "MSI B550-A Pro",\n' +
+        '  "PSU": "Corsair RM650x 650W"\n' +
+        '}'
+
+    build = JSON.parse(build)
 
     if (build?.error) {
         return new Response(
